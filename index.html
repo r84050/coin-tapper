@@ -1,1 +1,311 @@
-<!DOCTYPE html>\n<html lang=\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Coin Tapper - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        #score-board {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 100;
+            font-weight: bold;
+        }
+        #score-value {
+            display: block;
+            font-size: 48px;
+            color: #ffeb3b;
+            text-shadow: 0 0 20px #ffc107;
+        }
+        #taps-counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        .coin {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle at 30% 30%, #ffeb3b, #ffc107);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 30px #ffc107, inset -2px -2px 5px rgba(0,0,0,0.3);
+            animation: coinFloat 3s ease-in-out infinite;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            border: 4px solid #ff9800;
+            transition: transform 0.1s;
+        }
+        .coin:hover {
+            transform: scale(1.1);
+        }
+        .coin:active {
+            transform: scale(0.95);
+        }
+        @keyframes coinFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+        .coin-text {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .score-popup {
+            position: absolute;
+            color: #ffeb3b;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffc107;
+            pointer-events: none;
+            animation: scoreFloat 1s ease-out forwards;
+        }
+        @keyframes scoreFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-60px) scale(1.5);
+            }
+        }
+        #menu-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        #menu-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .menu-title {
+            font-size: 48px;
+            color: #ffeb3b;
+            text-shadow: 0 0 20px #ffc107;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .menu-subtitle {
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .menu-button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background: #667eea;
+            color: white;
+            border: 3px solid #ffeb3b;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            font-family: 'Press Start 2P', monospace;
+            transition: all 0.2s;
+            box-shadow: 0 0 20px rgba(255,235,59,0.5);
+        }
+        .menu-button:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255,235,59,0.8);
+        }
+        .menu-button:active {
+            transform: scale(0.95);
+        }
+        #combo-counter {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            color: #ffeb3b;
+            text-shadow: 0 0 10px #ffc107;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #combo-counter.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score-board">
+            SCORE
+            <span id="score-value">0</span>
+        </div>
+        <div id="taps-counter">
+            TAPS: <span id="taps-value">0</span>
+        </div>
+        <div id="combo-counter">COMBO: <span id="combo-value">0</span></div>
+    </div>
+    <div id="menu-screen">
+        <div class="menu-title">💰 COIN TAPPER 💰</div>
+        <div class="menu-subtitle">Tap coins to earn points!</div>
+        <button class="menu-button" onclick="startGame()">▶ START</button>
+    </div>
+    <script>
+        if(window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+        let score = 0;
+        let taps = 0;
+        let combo = 0;
+        let comboTimer = 0;
+        let gameRunning = false;
+        const gameContainer = document.getElementById('game-container');
+        const menuScreen = document.getElementById('menu-screen');
+        const scoreValue = document.getElementById('score-value');
+        const tapsValue = document.getElementById('taps-value');
+        const comboValue = document.getElementById('combo-value');
+        const comboCounter = document.getElementById('combo-counter');
+        const coinImages = ['💰', '🪙', '💎', '🏆'];
+        function createCoin() {
+            if (!gameRunning) return;
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            const randomCoin = coinImages[Math.floor(Math.random() * coinImages.length)];
+            coin.innerHTML = `<span class="coin-text">${randomCoin}</span>`;
+            const randomX = Math.random() * (window.innerWidth - 100);
+            const randomY = Math.random() * (window.innerHeight - 100);
+            coin.style.left = randomX + 'px';
+            coin.style.top = randomY + 'px';
+            const coinValue = Math.floor(Math.random() * 5) + 1;
+            coin.dataset.value = coinValue;
+            coin.addEventListener('click', (e) => {
+                e.stopPropagation();
+                tapCoin(coin, randomX + 40, randomY + 40, coinValue);
+            });
+            gameContainer.appendChild(coin);
+            setTimeout(() => {
+                if (coin.parentNode) coin.remove();
+            }, 3000);
+        }
+        function tapCoin(coinElement, x, y, value) {
+            score += value;
+            taps++;
+            combo++;
+            comboTimer = 1000;
+            scoreValue.textContent = score;
+            tapsValue.textContent = taps;
+            if (combo > 1) {
+                comboCounter.classList.add('active');
+                comboValue.textContent = combo + 'x';
+            }
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = '+' + value;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            gameContainer.appendChild(popup);
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.innerHTML = '✨';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                const angle = (Math.PI * 2 * i) / 5;
+                const distance = 50;
+                const px = Math.cos(angle) * distance;
+                const py = Math.sin(angle) * distance;
+                particle.style.animation = `none`;
+                gameContainer.appendChild(particle);
+                setTimeout(() => {
+                    particle.style.transition = 'all 0.6s ease-out';
+                    particle.style.left = (x + px) + 'px';
+                    particle.style.top = (y + py) + 'px';
+                    particle.style.opacity = '0';
+                }, 10);
+                setTimeout(() => particle.remove(), 700);
+            }
+            setTimeout(() => popup.remove(), 1100);
+            coinElement.style.transform = 'scale(0)';
+            setTimeout(() => coinElement.remove(), 200);
+            setTimeout(() => createCoin(), 200);
+        }
+        function updateCombo() {
+            if (comboTimer > 0) {
+                comboTimer -= 16;
+            } else {
+                combo = 0;
+                comboCounter.classList.remove('active');
+            }
+        }
+        function startGame() {
+            gameRunning = true;
+            menuScreen.classList.add('hidden');
+            score = 0;
+            taps = 0;
+            combo = 0;
+            scoreValue.textContent = '0';
+            tapsValue.textContent = '0';
+            document.querySelectorAll('.coin').forEach(coin => coin.remove());
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => createCoin(), i * 300);
+            }
+            setInterval(() => {
+                if (gameRunning) {
+                    createCoin();
+                }
+            }, 1500);
+        }
+        function gameLoop() {
+            updateCombo();
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+        menuScreen.classList.remove('hidden');
+    </script>
+</body>
+</html>
